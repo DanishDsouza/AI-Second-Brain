@@ -77,3 +77,30 @@ export async function uploadPdf(file: File): Promise<Note> {
 
   return (await response.json()) as Note;
 }
+
+export async function uploadImage(file: File): Promise<Note> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE}/upload/image`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const body = (await response.json()) as { detail?: string | { msg: string }[] };
+      if (typeof body.detail === "string") {
+        detail = body.detail;
+      } else if (Array.isArray(body.detail)) {
+        detail = body.detail.map((item) => item.msg).join("; ");
+      }
+    } catch {
+      // use statusText
+    }
+    throw new Error(detail || `Request failed (${response.status})`);
+  }
+
+  return (await response.json()) as Note;
+}
