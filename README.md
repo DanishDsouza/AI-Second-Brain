@@ -13,10 +13,26 @@ Implemented phases:
 - Categories, tags, and summaries
 - ChromaDB semantic search
 - sentence-transformers embeddings
+- PDF upload ingestion (PyMuPDF text extraction)
+- React web frontend
 - Tests
 
-Future phases from PROJECT_PLAN.md are not implemented yet: PDF uploads, OCR,
-RAG, and mobile app work.
+Future phases from PROJECT_PLAN.md are not implemented yet: OCR, RAG, and
+mobile app work.
+
+## Web frontend
+
+Minimal React UI in `frontend/` (view notes, create notes, semantic search).
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+With the API running at http://127.0.0.1:8000, open http://127.0.0.1:5173. Vite proxies `/api` to the backend.
+
+Optional: set `VITE_API_BASE_URL=http://127.0.0.1:8000` in `frontend/.env` to call the API directly (requires CORS; enabled for port 5173).
 
 ## Project Structure
 
@@ -31,6 +47,8 @@ app/
   models.py
   schemas.py
   semantic_search.py
+frontend/
+  src/
 tests/
   test_ai_service.py
   test_notes.py
@@ -88,10 +106,28 @@ The API will be available at http://127.0.0.1:8000.
 
 Interactive docs are available at http://127.0.0.1:8000/docs.
 
+## PDF upload
+
+Upload a PDF to extract text in memory, create a note, run Ollama analysis, and
+index embeddings in ChromaDB. PDF files are not stored on disk.
+
+```bash
+curl -X POST http://127.0.0.1:8000/upload/pdf -F "file=@document.pdf"
+```
+
+Optional limits:
+
+```bash
+set MAX_PDF_BYTES=20971520
+set MAX_NOTE_CONTENT_CHARS=500000
+set MAX_ANALYSIS_CONTENT_CHARS=12000
+```
+
 ## Endpoints
 
 - GET /health
 - POST /notes
+- POST /upload/pdf
 - GET /notes
 - GET /notes/{note_id}
 - PATCH /notes/{note_id}

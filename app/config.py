@@ -9,3 +9,7 @@ CHROMA_PATH = os.getenv("CHROMA_PATH", "./chroma_db")
 CHROMA_COLLECTION_NAME = os.getenv("CHROMA_COLLECTION_NAME", "notes")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 HUGGINGFACE_CACHE_PATH = os.getenv("HF_HOME", "./.hf_cache")
+
+MAX_PDF_BYTES = int(os.getenv("MAX_PDF_BYTES", str(20 * 1024 * 1024)))
+MAX_NOTE_CONTENT_CHARS = int(os.getenv("MAX_NOTE_CONTENT_CHARS", "500000"))
+MAX_ANALYSIS_CONTENT_CHARS = int(os.getenv("MAX_ANALYSIS_CONTENT_CHARS", "12000"))
