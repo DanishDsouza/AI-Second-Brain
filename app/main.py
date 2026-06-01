@@ -5,12 +5,13 @@ from fastapi import Depends, FastAPI, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
-from app.database import Base, engine, get_db
+from app.database import Base, engine, ensure_sqlite_note_analysis_columns, get_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Base.metadata.create_all(bind=engine)
+    ensure_sqlite_note_analysis_columns()
     yield
 
 

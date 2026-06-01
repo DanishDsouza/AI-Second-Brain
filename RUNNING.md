@@ -32,6 +32,23 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pytest
 ```
 
+## Prepare Ollama
+
+Phase 2 analyzes new notes with the local Ollama API and defaults to
+`gemma3:4b`.
+
+```powershell
+ollama pull gemma3:4b
+ollama serve
+```
+
+Optional model configuration:
+
+```powershell
+$env:OLLAMA_MODEL = "gemma3:4b"
+$env:OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+```
+
 ## Start the FastAPI server
 
 ```powershell

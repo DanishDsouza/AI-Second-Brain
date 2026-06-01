@@ -1,11 +1,19 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import models, schemas
+from app import ai_service, models, schemas
 
 
 def create_note(db: Session, note: schemas.NoteCreate) -> models.Note:
     db_note = models.Note(**note.model_dump())
+    db.add(db_note)
+    db.commit()
+    db.refresh(db_note)
+
+    analysis = ai_service.analyze_note(title=db_note.title, content=db_note.content)
+    db_note.category = analysis.category
+    db_note.tags = analysis.tags
+    db_note.summary = analysis.summary
     db.add(db_note)
     db.commit()
     db.refresh(db_note)

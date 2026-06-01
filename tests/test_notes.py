@@ -1,6 +1,8 @@
 from collections.abc import Generator
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -38,6 +40,18 @@ def setup_function() -> None:
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def mock_ollama_analysis(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_analyze_note(title: str, content: str) -> SimpleNamespace:
+        return SimpleNamespace(
+            category="General",
+            tags=["test", "note"],
+            summary=f"Summary for {title}",
+        )
+
+    monkeypatch.setattr("app.crud.ai_service.analyze_note", fake_analyze_note)
+
+
 def test_create_note() -> None:
     response = client.post("/notes", json={"title": "First note", "content": "Hello"})
 
@@ -46,6 +60,9 @@ def test_create_note() -> None:
     assert body["id"] == 1
     assert body["title"] == "First note"
     assert body["content"] == "Hello"
+    assert body["category"] == "General"
+    assert body["tags"] == ["test", "note"]
+    assert body["summary"] == "Summary for First note"
     assert "created_at" in body
     assert "updated_at" in body
 

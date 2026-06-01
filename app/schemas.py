@@ -21,5 +21,8 @@ class NoteRead(NoteBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    category: str
+    tags: list[str]
+    summary: str
     created_at: datetime
     updated_at: datetime
