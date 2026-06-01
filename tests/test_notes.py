@@ -1,0 +1,102 @@
+from collections.abc import Generator
+
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.database import Base, get_db
+from app.main import app
+
+
+SQLALCHEMY_DATABASE_URL = "sqlite://"
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+def override_get_db() -> Generator[Session, None, None]:
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+app.dependency_overrides[get_db] = override_get_db
+
+
+def setup_function() -> None:
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+
+client = TestClient(app)
+
+
+def test_create_note() -> None:
+    response = client.post("/notes", json={"title": "First note", "content": "Hello"})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["id"] == 1
+    assert body["title"] == "First note"
+    assert body["content"] == "Hello"
+    assert "created_at" in body
+    assert "updated_at" in body
+
+
+def test_list_notes() -> None:
+    client.post("/notes", json={"title": "One", "content": "First"})
+    client.post("/notes", json={"title": "Two", "content": "Second"})
+
+    response = client.get("/notes")
+
+    assert response.status_code == 200
+    assert [note["title"] for note in response.json()] == ["One", "Two"]
+
+
+def test_get_note() -> None:
+    created = client.post("/notes", json={"title": "Lookup", "content": "Find me"}).json()
+
+    response = client.get(f"/notes/{created['id']}")
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Lookup"
+
+
+def test_get_missing_note_returns_404() -> None:
+    response = client.get("/notes/999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Note not found"
+
+
+def test_update_note() -> None:
+    created = client.post("/notes", json={"title": "Draft", "content": "Old"}).json()
+
+    response = client.patch(f"/notes/{created['id']}", json={"content": "Updated"})
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Draft"
+    assert response.json()["content"] == "Updated"
+
+
+def test_delete_note() -> None:
+    created = client.post("/notes", json={"title": "Remove", "content": "Delete me"}).json()
+
+    delete_response = client.delete(f"/notes/{created['id']}")
+    get_response = client.get(f"/notes/{created['id']}")
+
+    assert delete_response.status_code == 204
+    assert get_response.status_code == 404
+
+
+def test_note_validation() -> None:
+    response = client.post("/notes", json={"title": "", "content": ""})
+
+    assert response.status_code == 422
