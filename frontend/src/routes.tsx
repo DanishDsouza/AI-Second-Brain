@@ -1,9 +1,10 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
-import LegacyAppPage from "@/pages/LegacyAppPage";
 import NoteDetailPage from "@/pages/NoteDetailPage";
 import NotesPage from "@/pages/NotesPage";
+import SearchPage from "@/pages/SearchPage";
+import UploadPage from "@/pages/UploadPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 
 export function AppRoutes() {
@@ -21,15 +22,7 @@ export function AppRoutes() {
         />
         <Route path="notes" element={<NotesPage />} />
         <Route path="notes/:noteId" element={<NoteDetailPage />} />
-        <Route
-          path="search"
-          element={
-            <PlaceholderPage
-              title="Search"
-              description="Phase 7.2 will add dedicated semantic search."
-            />
-          }
-        />
+        <Route path="search" element={<SearchPage />} />
         <Route
           path="chat"
           element={
@@ -39,7 +32,7 @@ export function AppRoutes() {
             />
           }
         />
-        <Route path="upload" element={<LegacyAppPage />} />
+        <Route path="upload" element={<UploadPage />} />
         <Route
           path="settings"
           element={
@@ -49,7 +42,6 @@ export function AppRoutes() {
             />
           }
         />
-        <Route path="legacy" element={<LegacyAppPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
