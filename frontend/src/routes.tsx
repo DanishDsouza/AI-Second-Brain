@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
 import LegacyAppPage from "@/pages/LegacyAppPage";
+import NoteDetailPage from "@/pages/NoteDetailPage";
+import NotesPage from "@/pages/NotesPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 
 export function AppRoutes() {
@@ -17,7 +19,8 @@ export function AppRoutes() {
             />
           }
         />
-        <Route path="notes/*" element={<LegacyAppPage />} />
+        <Route path="notes" element={<NotesPage />} />
+        <Route path="notes/:noteId" element={<NoteDetailPage />} />
         <Route
           path="search"
           element={

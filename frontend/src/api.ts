@@ -37,6 +37,10 @@ export function listNotes(): Promise<Note[]> {
   return request<Note[]>("/notes");
 }
 
+export function getNote(noteId: number): Promise<Note> {
+  return request<Note>(`/notes/${noteId}`);
+}
+
 export function createNote(note: NoteCreate): Promise<Note> {
   return request<Note>("/notes", {
     method: "POST",
