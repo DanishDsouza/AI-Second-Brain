@@ -11,5 +11,10 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM
 HUGGINGFACE_CACHE_PATH = os.getenv("HF_HOME", "./.hf_cache")
 
 MAX_PDF_BYTES = int(os.getenv("MAX_PDF_BYTES", str(20 * 1024 * 1024)))
+MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(10 * 1024 * 1024)))
 MAX_NOTE_CONTENT_CHARS = int(os.getenv("MAX_NOTE_CONTENT_CHARS", "500000"))
 MAX_ANALYSIS_CONTENT_CHARS = int(os.getenv("MAX_ANALYSIS_CONTENT_CHARS", "12000"))
+EMBED_MAX_CHARS = int(os.getenv("EMBED_MAX_CHARS", "8000"))
+MAX_IMAGE_DIMENSION = int(os.getenv("MAX_IMAGE_DIMENSION", "4096"))
+OCR_LANG = os.getenv("OCR_LANG", "en")
+OCR_TIMEOUT_SECONDS = float(os.getenv("OCR_TIMEOUT_SECONDS", "120"))

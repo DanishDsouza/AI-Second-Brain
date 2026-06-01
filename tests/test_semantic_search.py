@@ -18,6 +18,23 @@ class FakeCollection:
         return {"ids": [["2", "1"]]}
 
 
+def test_note_embedding_text_truncates_long_content(monkeypatch) -> None:
+    monkeypatch.setattr(semantic_search, "EMBED_MAX_CHARS", 10)
+    note = SimpleNamespace(
+        id=1,
+        title="Title",
+        content="x" * 50,
+        category="Cat",
+        tags=["a"],
+        summary="Sum",
+    )
+
+    text = semantic_search._note_embedding_text(note)
+
+    assert "Content: " + ("x" * 10) in text
+    assert "x" * 50 not in text
+
+
 def test_index_note_stores_embedding(monkeypatch) -> None:
     collection = FakeCollection()
     note = SimpleNamespace(

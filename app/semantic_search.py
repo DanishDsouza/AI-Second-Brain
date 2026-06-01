@@ -7,6 +7,7 @@ from app import models
 from app.config import (
     CHROMA_COLLECTION_NAME,
     CHROMA_PATH,
+    EMBED_MAX_CHARS,
     EMBEDDING_MODEL,
     HUGGINGFACE_CACHE_PATH,
 )
@@ -67,14 +68,26 @@ def search_note_ids(query: str, limit: int = 5) -> list[int]:
 
 
 def _note_embedding_text(note: models.Note) -> str:
+    """Build the string encoded for ChromaDB.
+
+    Full note content stays in SQLite; only a leading content excerpt is embedded
+    so vectors stay predictable for long PDFs and OCR notes.
+    """
     tags = ", ".join(note.tags)
+    content = _content_for_embedding(note.content)
     return (
         f"Title: {note.title}\n"
         f"Category: {note.category}\n"
         f"Tags: {tags}\n"
         f"Summary: {note.summary}\n"
-        f"Content: {note.content}"
+        f"Content: {content}"
     )
+
+
+def _content_for_embedding(content: str) -> str:
+    if len(content) <= EMBED_MAX_CHARS:
+        return content
+    return content[:EMBED_MAX_CHARS]
 
 
 def _model_cache_exists() -> bool:
