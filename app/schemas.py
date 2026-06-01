@@ -31,3 +31,17 @@ class NoteRead(NoteBase):
     summary: str
     created_at: datetime
     updated_at: datetime
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(..., min_length=1)
+
+
+class ChatSource(BaseModel):
+    id: int
+    title: str
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: list[ChatSource]
