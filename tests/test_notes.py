@@ -1,41 +1,11 @@
-from collections.abc import Generator
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from app.database import Base, get_db
+from app.ai_service import _content_for_analysis
+from app.config import MAX_ANALYSIS_CONTENT_CHARS
 from app.main import app
-
-
-SQLALCHEMY_DATABASE_URL = "sqlite://"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-
-
-def override_get_db() -> Generator[Session, None, None]:
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-def setup_function() -> None:
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-
 
 client = TestClient(app)
 
@@ -53,6 +23,32 @@ def mock_external_services(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.crud.semantic_search.index_note", lambda note: None)
     monkeypatch.setattr("app.crud.semantic_search.delete_note", lambda note_id: None)
     monkeypatch.setattr("app.crud.semantic_search.search_note_ids", lambda query, limit: [])
+
+
+def test_create_note_stores_full_content_while_analysis_gets_excerpt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, str] = {}
+    full_content = "z" * (MAX_ANALYSIS_CONTENT_CHARS + 100)
+
+    def fake_analyze_note(title: str, content: str) -> SimpleNamespace:
+        captured["full"] = content
+        captured["excerpt"] = _content_for_analysis(content)
+        return SimpleNamespace(
+            category="General",
+            tags=["long"],
+            summary="Summary",
+        )
+
+    monkeypatch.setattr("app.crud.ai_service.analyze_note", fake_analyze_note)
+
+    response = client.post("/notes", json={"title": "Long note", "content": full_content})
+
+    assert response.status_code == 201
+    assert response.json()["content"] == full_content
+    assert captured["full"] == full_content
+    assert len(captured["excerpt"]) < len(full_content)
+    assert "truncated for analysis" in captured["excerpt"]
 
 
 def test_create_note() -> None:

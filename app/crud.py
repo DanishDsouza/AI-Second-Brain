@@ -1,7 +1,9 @@
+import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import ai_service, models, schemas, semantic_search
+from app.exceptions import NoteAnalysisError, NoteIndexError
 
 
 def create_note(db: Session, note: schemas.NoteCreate) -> models.Note:
@@ -10,14 +12,24 @@ def create_note(db: Session, note: schemas.NoteCreate) -> models.Note:
     db.commit()
     db.refresh(db_note)
 
-    analysis = ai_service.analyze_note(title=db_note.title, content=db_note.content)
+    # Persist full content first; analyze_note truncates internally for Ollama only.
+    try:
+        analysis = ai_service.analyze_note(title=db_note.title, content=db_note.content)
+    except (httpx.HTTPError, ValueError) as error:
+        raise NoteAnalysisError("AI analysis unavailable") from error
+
     db_note.category = analysis.category
     db_note.tags = analysis.tags
     db_note.summary = analysis.summary
     db.add(db_note)
     db.commit()
     db.refresh(db_note)
-    semantic_search.index_note(db_note)
+
+    try:
+        semantic_search.index_note(db_note)
+    except Exception as error:
+        raise NoteIndexError("Failed to index note for search") from error
+
     return db_note
 
 

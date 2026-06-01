@@ -3,7 +3,12 @@ import json
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 
-from app.config import OLLAMA_BASE_URL, OLLAMA_MODEL, OLLAMA_TIMEOUT_SECONDS
+from app.config import (
+    MAX_ANALYSIS_CONTENT_CHARS,
+    OLLAMA_BASE_URL,
+    OLLAMA_MODEL,
+    OLLAMA_TIMEOUT_SECONDS,
+)
 
 
 class NoteAnalysis(BaseModel):
@@ -32,12 +37,32 @@ def analyze_note(title: str, content: str, model_name: str = OLLAMA_MODEL) -> No
 
 
 def _build_prompt(title: str, content: str) -> str:
+    # Ollama receives a possibly shortened excerpt only; callers pass the full note
+    # content so SQLite and embeddings keep the complete document (see crud.create_note).
+    analysis_content = _content_for_analysis(content)
     return (
         "Analyze this note and return only valid JSON with these fields: "
         "category as a short string, tags as an array of short strings, "
         "and summary as a concise string.\n\n"
         f"Title: {title}\n\n"
-        f"Content:\n{content}"
+        f"Content:\n{analysis_content}"
+    )
+
+
+def _content_for_analysis(content: str) -> str:
+    """Return the text sent to Ollama for category/tags/summary.
+
+    Full note content stays in the database and in Chroma embedding payloads;
+    only this excerpt is used for LLM analysis because context windows and latency
+    do not scale to entire PDFs or very long notes.
+    """
+    if len(content) <= MAX_ANALYSIS_CONTENT_CHARS:
+        return content
+
+    truncated = content[:MAX_ANALYSIS_CONTENT_CHARS]
+    return (
+        f"{truncated}\n\n"
+        "[Note: content was truncated for analysis because the source text is very long.]"
     )
 
 
