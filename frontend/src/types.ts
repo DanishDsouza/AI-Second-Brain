@@ -18,3 +18,17 @@ export interface SearchQuery {
   query: string;
   limit?: number;
 }
+
+export interface ChatRequest {
+  question: string;
+}
+
+export interface ChatSource {
+  id: number;
+  title: string;
+}
+
+export interface ChatResponse {
+  answer: string;
+  sources: ChatSource[];
+}

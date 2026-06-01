@@ -1,9 +1,22 @@
-import type { Note, NoteCreate, SearchQuery } from "./types";
+import type { ChatRequest, ChatResponse, Note, NoteCreate, SearchQuery } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const API_BASE_STORAGE_KEY = "ai-second-brain-api-base";
+const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+
+function getApiBase(): string {
+  try {
+    const stored = localStorage.getItem(API_BASE_STORAGE_KEY);
+    if (stored?.trim()) {
+      return stored.trim();
+    }
+  } catch {
+    // private mode / disabled storage
+  }
+  return DEFAULT_API_BASE;
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${getApiBase()}${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
@@ -59,7 +72,7 @@ export async function uploadPdf(file: File): Promise<Note> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE}/upload/pdf`, {
+  const response = await fetch(`${getApiBase()}/upload/pdf`, {
     method: "POST",
     body: formData,
   });
@@ -86,7 +99,7 @@ export async function uploadImage(file: File): Promise<Note> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE}/upload/image`, {
+  const response = await fetch(`${getApiBase()}/upload/image`, {
     method: "POST",
     body: formData,
   });
@@ -107,4 +120,11 @@ export async function uploadImage(file: File): Promise<Note> {
   }
 
   return (await response.json()) as Note;
+}
+
+export function chat(payload: ChatRequest): Promise<ChatResponse> {
+  return request<ChatResponse>("/chat", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
