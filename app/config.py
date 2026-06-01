@@ -13,3 +13,7 @@ HUGGINGFACE_CACHE_PATH = os.getenv("HF_HOME", "./.hf_cache")
 MAX_PDF_BYTES = int(os.getenv("MAX_PDF_BYTES", str(20 * 1024 * 1024)))
 MAX_NOTE_CONTENT_CHARS = int(os.getenv("MAX_NOTE_CONTENT_CHARS", "500000"))
 MAX_ANALYSIS_CONTENT_CHARS = int(os.getenv("MAX_ANALYSIS_CONTENT_CHARS", "12000"))
+
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "8"))
+RAG_EXCERPT_CHARS = int(os.getenv("RAG_EXCERPT_CHARS", "3000"))
+RAG_MAX_CONTEXT_CHARS = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "24000"))

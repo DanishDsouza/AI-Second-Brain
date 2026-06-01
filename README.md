@@ -14,11 +14,12 @@ Implemented phases:
 - ChromaDB semantic search
 - sentence-transformers embeddings
 - PDF upload ingestion (PyMuPDF text extraction)
+- RAG chat (Phase 6A: retrieval + Ollama grounded answers)
 - React web frontend
 - Tests
 
-Future phases from PROJECT_PLAN.md are not implemented yet: OCR, RAG, and
-mobile app work.
+Future phases from PROJECT_PLAN.md are not implemented yet: OCR, conversation
+memory, streaming chat, and mobile app work.
 
 ## Web frontend
 
@@ -47,12 +48,15 @@ app/
   models.py
   schemas.py
   semantic_search.py
+  rag_service.py
 frontend/
   src/
 tests/
   test_ai_service.py
   test_notes.py
   test_semantic_search.py
+  test_chat.py
+  test_rag_service.py
 PROJECT_PLAN.md
 README.md
 requirements.txt
@@ -123,11 +127,45 @@ set MAX_NOTE_CONTENT_CHARS=500000
 set MAX_ANALYSIS_CONTENT_CHARS=12000
 ```
 
+## RAG chat (Phase 6A)
+
+Ask a question over your notes. The API retrieves the top **8** semantically similar
+notes from ChromaDB, loads full text from SQLite into a bounded context window, and
+asks Ollama to answer using only those sources.
+
+**Ollama must be running** (`ollama serve`).
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat ^
+  -H "Content-Type: application/json" ^
+  -d "{\"question\": \"What do my notes say about FastAPI?\"}"
+```
+
+Example response:
+
+```json
+{
+  "answer": "Your notes mention ... [note:3]",
+  "sources": [
+    { "id": 3, "title": "API Guide" }
+  ]
+}
+```
+
+Optional limits:
+
+```bash
+set RAG_TOP_K=8
+set RAG_EXCERPT_CHARS=3000
+set RAG_MAX_CONTEXT_CHARS=24000
+```
+
 ## Endpoints
 
 - GET /health
 - POST /notes
 - POST /upload/pdf
+- POST /chat
 - GET /notes
 - GET /notes/{note_id}
 - PATCH /notes/{note_id}

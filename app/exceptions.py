@@ -4,3 +4,7 @@ class NoteAnalysisError(Exception):
 
 class NoteIndexError(Exception):
     """Raised when ChromaDB indexing fails."""
+
+
+class RagGenerationError(Exception):
+    """Raised when Ollama RAG chat generation fails."""

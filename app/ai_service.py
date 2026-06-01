@@ -66,6 +66,44 @@ def _content_for_analysis(content: str) -> str:
     )
 
 
+_CHAT_SYSTEM_PROMPT = (
+    "You are a personal knowledge assistant. Answer the question using ONLY the "
+    "provided source notes. When you use information from a note, cite it inline "
+    "as [note:ID] where ID is the note id from the source block. If the sources "
+    "do not contain enough information to answer, say so clearly. Do not invent "
+    "facts or note ids."
+)
+
+
+def generate_chat_answer(
+    question: str,
+    context: str,
+    model_name: str = OLLAMA_MODEL,
+) -> str:
+    response = httpx.post(
+        f"{OLLAMA_BASE_URL}/api/chat",
+        json={
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": _CHAT_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": f"Question:\n{question}\n\nSources:\n{context}",
+                },
+            ],
+            "stream": False,
+        },
+        timeout=OLLAMA_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+
+    message = response.json().get("message", {})
+    content = message.get("content", "")
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("Ollama returned an empty chat response")
+    return content.strip()
+
+
 def _parse_analysis(raw_analysis: str) -> NoteAnalysis:
     try:
         parsed = json.loads(raw_analysis)

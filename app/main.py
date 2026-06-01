@@ -6,10 +6,10 @@ from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile,
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app import crud, models, schemas
+from app import crud, models, rag_service, schemas
 from app.config import MAX_NOTE_CONTENT_CHARS, MAX_PDF_BYTES
 from app.database import Base, engine, ensure_sqlite_note_analysis_columns, get_db
-from app.exceptions import NoteAnalysisError, NoteIndexError
+from app.exceptions import NoteAnalysisError, NoteIndexError, RagGenerationError
 from app.pdf_service import EmptyPdfError, PdfExtractionError, extract_text_from_pdf
 
 
@@ -149,6 +149,20 @@ def search_notes(
     db: Session = Depends(get_db),
 ) -> list[models.Note]:
     return crud.search_notes(db, query=search_query.query, limit=search_query.limit)
+
+
+@app.post("/chat", response_model=schemas.ChatResponse)
+def chat(
+    chat_request: schemas.ChatRequest,
+    db: Session = Depends(get_db),
+) -> schemas.ChatResponse:
+    try:
+        return rag_service.answer_question(db, question=chat_request.question)
+    except RagGenerationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI chat unavailable",
+        ) from error
 
 
 @app.patch("/notes/{note_id}", response_model=schemas.NoteRead)
