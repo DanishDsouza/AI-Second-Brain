@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "./api";
 import { NoteForm } from "./components/NoteForm";
 import { NoteList } from "./components/NoteList";
+import { ImageUploadForm } from "./components/ImageUploadForm";
 import { PdfUploadForm } from "./components/PdfUploadForm";
 import { SearchPanel } from "./components/SearchPanel";
 import type { Note } from "./types";
@@ -66,6 +67,21 @@ export default function App() {
     }
   }
 
+  async function handleImageUpload(file: File) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.uploadImage(file);
+      setSearchResults(null);
+      setViewMode("all");
+      await loadNotes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Image upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSearch(query: string) {
     setBusy(true);
     setError(null);
@@ -101,6 +117,7 @@ export default function App() {
 
       <NoteForm onSubmit={handleCreate} disabled={busy} />
       <PdfUploadForm onUpload={handlePdfUpload} disabled={busy} />
+      <ImageUploadForm onUpload={handleImageUpload} disabled={busy} />
       <SearchPanel
         onSearch={handleSearch}
         onClear={handleClearSearch}
