@@ -41,7 +41,7 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def mock_ollama_analysis(monkeypatch: pytest.MonkeyPatch) -> None:
+def mock_external_services(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_analyze_note(title: str, content: str) -> SimpleNamespace:
         return SimpleNamespace(
             category="General",
@@ -50,6 +50,9 @@ def mock_ollama_analysis(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr("app.crud.ai_service.analyze_note", fake_analyze_note)
+    monkeypatch.setattr("app.crud.semantic_search.index_note", lambda note: None)
+    monkeypatch.setattr("app.crud.semantic_search.delete_note", lambda note_id: None)
+    monkeypatch.setattr("app.crud.semantic_search.search_note_ids", lambda query, limit: [])
 
 
 def test_create_note() -> None:
@@ -101,6 +104,44 @@ def test_update_note() -> None:
     assert response.status_code == 200
     assert response.json()["title"] == "Draft"
     assert response.json()["content"] == "Updated"
+
+
+def test_update_note_reindexes_embedding(monkeypatch: pytest.MonkeyPatch) -> None:
+    indexed_note_ids: list[int] = []
+
+    def fake_index_note(note: SimpleNamespace) -> None:
+        indexed_note_ids.append(note.id)
+
+    monkeypatch.setattr("app.crud.semantic_search.index_note", fake_index_note)
+    created = client.post("/notes", json={"title": "Draft", "content": "Old"}).json()
+
+    response = client.patch(f"/notes/{created['id']}", json={"content": "Updated"})
+
+    assert response.status_code == 200
+    assert indexed_note_ids == [created["id"], created["id"]]
+
+
+def test_search_notes_returns_semantically_similar_notes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = client.post("/notes", json={"title": "Python", "content": "FastAPI notes"}).json()
+    second = client.post("/notes", json={"title": "Garden", "content": "Tomato notes"}).json()
+
+    monkeypatch.setattr(
+        "app.crud.semantic_search.search_note_ids",
+        lambda query, limit: [second["id"], first["id"]],
+    )
+
+    response = client.post("/search", json={"query": "plants", "limit": 5})
+
+    assert response.status_code == 200
+    assert [note["id"] for note in response.json()] == [second["id"], first["id"]]
+
+
+def test_search_requires_query() -> None:
+    response = client.post("/search", json={"query": ""})
+
+    assert response.status_code == 422
 
 
 def test_delete_note() -> None:

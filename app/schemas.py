@@ -17,6 +17,11 @@ class NoteUpdate(BaseModel):
     content: str | None = Field(default=None, min_length=1)
 
 
+class SearchQuery(BaseModel):
+    query: str = Field(..., min_length=1)
+    limit: int = Field(default=5, ge=1, le=5)
+
+
 class NoteRead(NoteBase):
     model_config = ConfigDict(from_attributes=True)
 

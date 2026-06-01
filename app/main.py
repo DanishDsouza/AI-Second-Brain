@@ -45,6 +45,14 @@ def get_note(note_id: int, db: Session = Depends(get_db)) -> models.Note:
     return db_note
 
 
+@app.post("/search", response_model=list[schemas.NoteRead])
+def search_notes(
+    search_query: schemas.SearchQuery,
+    db: Session = Depends(get_db),
+) -> list[models.Note]:
+    return crud.search_notes(db, query=search_query.query, limit=search_query.limit)
+
+
 @app.patch("/notes/{note_id}", response_model=schemas.NoteRead)
 def update_note(
     note_id: int,

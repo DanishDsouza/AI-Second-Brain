@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import ai_service, models, schemas
+from app import ai_service, models, schemas, semantic_search
 
 
 def create_note(db: Session, note: schemas.NoteCreate) -> models.Note:
@@ -17,6 +17,7 @@ def create_note(db: Session, note: schemas.NoteCreate) -> models.Note:
     db.add(db_note)
     db.commit()
     db.refresh(db_note)
+    semantic_search.index_note(db_note)
     return db_note
 
 
@@ -27,6 +28,15 @@ def list_notes(db: Session, skip: int = 0, limit: int = 100) -> list[models.Note
 
 def get_note(db: Session, note_id: int) -> models.Note | None:
     return db.get(models.Note, note_id)
+
+
+def search_notes(db: Session, query: str, limit: int = 5) -> list[models.Note]:
+    note_ids = semantic_search.search_note_ids(query=query, limit=limit)
+    notes_by_id = {
+        note.id: note
+        for note in db.scalars(select(models.Note).where(models.Note.id.in_(note_ids))).all()
+    }
+    return [notes_by_id[note_id] for note_id in note_ids if note_id in notes_by_id]
 
 
 def update_note(
@@ -41,9 +51,11 @@ def update_note(
     db.add(db_note)
     db.commit()
     db.refresh(db_note)
+    semantic_search.index_note(db_note)
     return db_note
 
 
 def delete_note(db: Session, db_note: models.Note) -> None:
+    semantic_search.delete_note(db_note.id)
     db.delete(db_note)
     db.commit()

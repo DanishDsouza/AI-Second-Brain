@@ -49,6 +49,19 @@ $env:OLLAMA_MODEL = "gemma3:4b"
 $env:OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 ```
 
+## Configure semantic search
+
+Phase 3 stores embeddings in ChromaDB and defaults to
+`sentence-transformers/all-MiniLM-L6-v2`.
+
+Optional configuration:
+
+```powershell
+$env:EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+$env:CHROMA_PATH = "./chroma_db"
+$env:CHROMA_COLLECTION_NAME = "notes"
+```
+
 ## Start the FastAPI server
 
 ```powershell
@@ -65,4 +78,11 @@ Health check:
 
 ```powershell
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/health"
+```
+
+Semantic search:
+
+```powershell
+$body = @{ query = "notes about API development"; limit = 5 } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/search" -Method Post -ContentType "application/json" -Body $body
 ```
