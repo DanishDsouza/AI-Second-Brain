@@ -43,7 +43,9 @@ def _build_prompt(title: str, content: str) -> str:
     return (
         "Analyze this note and return only valid JSON with these fields: "
         "category as a short string, tags as an array of short strings, "
-        "and summary as a concise string.\n\n"
+        "and summary as a concise string. "
+        "The content below is the primary source of truth for determining category and tags; "
+        "use the title only as supporting context.\n\n"
         f"Title: {title}\n\n"
         f"Content:\n{analysis_content}"
     )

@@ -6,10 +6,11 @@ from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile,
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app import crud, models, rag_service, schemas
-from app.config import MAX_NOTE_CONTENT_CHARS, MAX_PDF_BYTES
+from app import crud, models, rag_service, schemas, semantic_search
+from app.config import MAX_IMAGE_BYTES, MAX_NOTE_CONTENT_CHARS, MAX_PDF_BYTES
 from app.database import Base, engine, ensure_sqlite_note_analysis_columns, get_db
 from app.exceptions import NoteAnalysisError, NoteIndexError, RagGenerationError
+from app.ocr_service import EmptyImageError, NoTextDetectedError, OcrExtractionError, extract_text_from_image
 from app.pdf_service import EmptyPdfError, PdfExtractionError, extract_text_from_pdf
 
 
@@ -17,6 +18,7 @@ from app.pdf_service import EmptyPdfError, PdfExtractionError, extract_text_from
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Base.metadata.create_all(bind=engine)
     ensure_sqlite_note_analysis_columns()
+    semantic_search.get_embedding_model()
     yield
 
 
@@ -110,6 +112,70 @@ def upload_pdf(
         ) from error
 
 
+@app.post("/upload/image", response_model=schemas.NoteRead, status_code=status.HTTP_201_CREATED)
+def upload_image(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> models.Note:
+    contents = file.file.read()
+    if not contents:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty image",
+        )
+    if not _is_image_upload(file, contents):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type; image required (PNG, JPG, JPEG, WEBP)",
+        )
+
+    if len(contents) > MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Image exceeds maximum size",
+        )
+
+    try:
+        extracted_text = extract_text_from_image(contents)
+    except EmptyImageError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+    except NoTextDetectedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+    except OcrExtractionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OCR extraction failed",
+        ) from error
+
+    if len(extracted_text) > MAX_NOTE_CONTENT_CHARS:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Extracted text exceeds maximum length",
+        )
+
+    title = _title_from_upload_filename(file.filename, default_title="Image upload")
+    note = schemas.NoteCreate(title=title, content=extracted_text)
+
+    try:
+        return crud.create_note(db, note)
+    except NoteAnalysisError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI analysis unavailable",
+        ) from error
+    except NoteIndexError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to index note for search",
+        ) from error
+
+
 def _is_pdf_upload(file: UploadFile, contents: bytes) -> bool:
     if contents.startswith(b"%PDF"):
         return True
@@ -119,10 +185,31 @@ def _is_pdf_upload(file: UploadFile, contents: bytes) -> bool:
     return filename.endswith(".pdf") or content_type == "application/pdf"
 
 
-def _title_from_upload_filename(filename: str | None) -> str:
-    stem = Path(filename or "upload.pdf").stem.strip()
+def _is_image_upload(file: UploadFile, contents: bytes) -> bool:
+    if _image_magic_type(contents) is not None:
+        return True
+
+    filename = (file.filename or "").lower()
+    content_type = (file.content_type or "").lower()
+    allowed_extensions = (".png", ".jpg", ".jpeg", ".webp")
+    allowed_content_types = {"image/png", "image/jpeg", "image/webp"}
+    return filename.endswith(allowed_extensions) or content_type in allowed_content_types
+
+
+def _image_magic_type(contents: bytes) -> str | None:
+    if contents.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if contents.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if len(contents) >= 12 and contents[:4] == b"RIFF" and contents[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def _title_from_upload_filename(filename: str | None, default_title: str = "PDF upload") -> str:
+    stem = Path(filename or default_title).stem.strip()
     if not stem:
-        return "PDF upload"
+        return default_title
     return stem[:200]
 
 

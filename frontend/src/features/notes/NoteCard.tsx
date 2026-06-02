@@ -7,9 +7,10 @@ import type { Note } from "@/types";
 
 interface NoteCardProps {
   note: Note;
+  onTagClick?: (tag: string) => void;
 }
 
-export function NoteCard({ note }: NoteCardProps) {
+export function NoteCard({ note, onTagClick }: NoteCardProps) {
   const preview =
     note.summary || (note.content.length > 160 ? `${note.content.slice(0, 160)}…` : note.content);
 
@@ -30,7 +31,16 @@ export function NoteCard({ note }: NoteCardProps) {
           {note.tags.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {note.tags.slice(0, 4).map((tag) => (
-                <Badge key={tag} variant="secondary" className="font-normal">
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="cursor-pointer font-normal"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onTagClick?.(tag);
+                  }}
+                >
                   {tag}
                 </Badge>
               ))}

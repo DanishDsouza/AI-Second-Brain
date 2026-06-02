@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, Note, NoteCreate, SearchQuery } from "./types";
+import type { ChatRequest, ChatResponse, Note, NoteCreate, NoteUpdate, SearchQuery } from "./types";
 
 const API_BASE_STORAGE_KEY = "ai-second-brain-api-base";
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
@@ -58,6 +58,19 @@ export function createNote(note: NoteCreate): Promise<Note> {
   return request<Note>("/notes", {
     method: "POST",
     body: JSON.stringify(note),
+  });
+}
+
+export function updateNote(noteId: number, data: NoteUpdate): Promise<Note> {
+  return request<Note>(`/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteNote(noteId: number): Promise<void> {
+  return request<void>(`/notes/${noteId}`, {
+    method: "DELETE",
   });
 }
 

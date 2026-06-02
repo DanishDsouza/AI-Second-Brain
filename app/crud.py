@@ -19,7 +19,7 @@ def create_note(db: Session, note: schemas.NoteCreate) -> models.Note:
         raise NoteAnalysisError("AI analysis unavailable") from error
 
     db_note.category = analysis.category
-    db_note.tags = analysis.tags
+    db_note.tags = _normalize_tags(analysis.tags)
     db_note.summary = analysis.summary
     db.add(db_note)
     db.commit()
@@ -60,6 +60,16 @@ def update_note(
     for field, value in update_data.items():
         setattr(db_note, field, value)
 
+    if "title" in update_data or "content" in update_data:
+        try:
+            analysis = ai_service.analyze_note(title=db_note.title, content=db_note.content)
+        except (httpx.HTTPError, ValueError) as error:
+            raise NoteAnalysisError("AI analysis unavailable") from error
+
+        db_note.category = analysis.category
+        db_note.tags = _normalize_tags(analysis.tags)
+        db_note.summary = analysis.summary
+
     db.add(db_note)
     db.commit()
     db.refresh(db_note)
@@ -71,3 +81,15 @@ def delete_note(db: Session, db_note: models.Note) -> None:
     semantic_search.delete_note(db_note.id)
     db.delete(db_note)
     db.commit()
+
+
+def _normalize_tags(tags: list[str]) -> list[str]:
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for tag in tags:
+        cleaned = tag.strip().lower()
+        if cleaned and cleaned not in seen:
+            seen.add(cleaned)
+            normalized.append(cleaned)
+    normalized.sort()
+    return normalized

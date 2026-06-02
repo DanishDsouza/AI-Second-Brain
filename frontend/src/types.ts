@@ -14,6 +14,11 @@ export interface NoteCreate {
   content: string;
 }
 
+export interface NoteUpdate {
+  title?: string;
+  content?: string;
+}
+
 export interface SearchQuery {
   query: string;
   limit?: number;

@@ -60,7 +60,7 @@ def test_create_note() -> None:
     assert body["title"] == "First note"
     assert body["content"] == "Hello"
     assert body["category"] == "General"
-    assert body["tags"] == ["test", "note"]
+    assert body["tags"] == ["note", "test"]
     assert body["summary"] == "Summary for First note"
     assert "created_at" in body
     assert "updated_at" in body
